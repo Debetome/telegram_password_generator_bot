@@ -1,0 +1,12 @@
+from dataclasses import dataclass, field
+
+@dataclass
+class PasswordRegister:
+    title: str = field(default_factory=str)
+    password: str = field(default_factory=str)
+    chat_id: int = field(default_factory=int)
+
+@dataclass
+class Password:
+    chars: str = field(default_factory=str)
+    length: int = field(default_factory=int)

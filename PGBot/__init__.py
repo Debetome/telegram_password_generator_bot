@@ -73,11 +73,11 @@ class PasswordGeneratorBot:
 
         if len(length) == 0:
             update.message.reply_text("Invalid password length!")
-            return ConversationHandler.END
+            return GenerateState.SELECT_CHARS
 
         self.password.length = int("".join(length))
         self._send_password(update.message.chat_id)
-        return ConversationHandler.END
+        return GenerateState.SELECT_CHARS
 
     def _send_password(self, chat_id):
         bot = self.updater.bot
@@ -96,7 +96,7 @@ class PasswordGeneratorBot:
     def retrieve_passw(self, update: Update, context: CallbackContext):
         self.passwordRegister.password = update.message.text
         update.message.reply_text("Set a title for this password")
-        return SaveState.RETRIVE_TITLE
+        return SaveState.RETRIEVE_TITLE
 
     def retrieve_title(self, update: Update, context: CallbackContext):
         self.passwordRegister.title = update.message.text
@@ -104,7 +104,7 @@ class PasswordGeneratorBot:
         self._save_password()
 
         update.message.reply_text("Password saved!")
-        return ConversationHandler.END
+        return SaveState.RETRIEVE_PASS
 
     def _save_password(self):
         password = self.passwordRegister
@@ -142,20 +142,70 @@ class PasswordGeneratorBot:
 
         keyboard = [
             [
-                InlineKeyboardButton("Edit", callback_data=1),
-                InlineKeyboardButton("", callback_data=2)
-            ],
+                InlineKeyboardButton("Edit", callback_data=str(1)),
+                InlineKeyboardButton("Delete", callback_data=str(2)),
+                InlineKeyboardButton("<< Back", callback_data=str(3))
+            ]
+        ]
 
+        query.edit_message_text(text="", reply_markup=keyboard)
         return MyPasswordState.SELECT_PASSWORD_OPTIONS
 
-    def select_password_options(self, update: Update, context: CallbackContext):
-        return None
+    def mypasswords_edit(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        query.answer()
 
-    def delete(self, update: Update, context: CallbackContext):
-        pass
+        keyboard = [
+            [InlineKeyboardButton("Yes", callback_data="yes")],
+            [InlineKeyboardButton("No", callback_data="no")]
+        ]
 
-    def cancel(self, update: Update, context: CallbackContext):
-        return ConversationHandler.END
+        markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text("Are you sure you want to edit this password?", reply_markup=markup)
+        return MyPasswordState.SELECT_PASSWORD_OPTIONS
+
+    def mypasswords_edit_option(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        query.answer()
+        choice = query.data
+
+        if choice == "yes":
+            query.edit_message_text("Send the new password ...")
+            return MyPasswordState.EDIT_RETRIEVE_PASSWORD
+
+        elif choice == "no":
+            query.edit_message_text("Operation cancelled!")
+            return MyPasswordState.SELECT_PASSWORD
+
+    def mypasswords_edit_retrieve_password(self, update: Update, context: CallbackContext):
+        password = update.message.text
+        update.message.reply_text("Password changed!")
+        return MyPasswordState.SELECT_PASSWORD
+
+    def mypasswords_delete(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        query.answer()
+
+        keyboard = [
+            [InlineKeyboardButton("Yes", callback_data="yes")],
+            [InlineKeyboardButton("No", callback_data="no")]
+        ]
+
+        markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(text="Are you sure you want to delete this password?", reply_markup=markup)
+        return MyPasswordState.SELECT_PASSWORD_OPTIONS
+
+    def mypasswords_delete_option(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        query.answer()
+        choice = query.data
+
+        if choice == "yes":
+            query.edit_message_text("Password deleted")
+            return MyPasswordState.SELECT_PASSWORD
+        elif choice == "no":
+            query.edit_message_text("Operation cancelled")
+            return MyPasswordState.SELECT_PASSWORD
 
     def run(self):
         self.updater = Updater(self.token)
@@ -170,10 +220,7 @@ class PasswordGeneratorBot:
                 GenerateState.SELECT_LENGTH: [MessageHandler(Filters.text, self.select_length)]
             },
             fallbacks=[
-                CommandHandler("start", self.start),
-                CommandHandler("help", self.help),
-                CommandHandler("generate", self.generate),
-                CommandHandler("save", self.save)
+                CommandHandler("generate", self.generate)
             ]
         )
 
@@ -184,9 +231,6 @@ class PasswordGeneratorBot:
                 SaveState.RETRIEVE_TITLE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)]
             },
             fallbacks=[
-                CommandHandler("start", self.start),
-                CommandHandler("help", self.help),
-                CommandHandler("generate", self.generate),
                 CommandHandler("save", self.save)
             ]
         )
@@ -197,10 +241,7 @@ class PasswordGeneratorBot:
                 MyPasswordState.SELECT_PASSWORD: [CommandHandler("mypasswords", self.select_password)]
             },
             fallbacks=[
-                CommandHandler("start", self.start),
-                CommandHandler("help", self.help),
-                CommandHandler("generate", self.generate),
-                CommandHandler("save", self.save)
+                CommandHandler("mypasswords", self.my_passwords)
             ]
         )
 
@@ -210,10 +251,7 @@ class PasswordGeneratorBot:
                 DeletePassword.SELECT_PASSWORD: [CommandHandler("delete", self.delete)]
             },
             fallbacks=[
-                CommandHandler("start", self.start),
-                CommandHandler("help", self.help),
-                CommandHandler("generate", self.generate),
-                CommandHandler("save", self.save)
+                CommandHandler("delete", self.delete)
             ]
         )
 

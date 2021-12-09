@@ -1,0 +1,30 @@
+from telegram import Update
+from telegram.ext import CallbackContext, ConversationHandler
+
+from abc import ABCMeta, abstractmethod
+
+class BaseConversation(metaclass=ABCMeta):
+    def __init__(self):
+        self._conversation = None
+
+    def set_conversation(self, conversation: ConversationHandler):
+        self._conversation = conversation
+
+    @property
+    def conversation(self) -> ConversationHandler:
+        if self._conversation is not None:
+            return None
+        return self._conversation
+
+    @abstractmethod
+    def start(self, update: Update, context: CallbackContext):
+        pass
+
+    @abstractmethod
+    def cancel(self, update: Update, context: CallbackContext):
+        pass
+
+    @abstractmethod
+    def setup(self):
+        pass
+

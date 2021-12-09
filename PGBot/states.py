@@ -12,6 +12,8 @@ class SaveState(int, Enum):
 class MyPasswordState(int, Enum):
     SELECT_PASSWORD = 1
     SELECT_PASSWORD_OPTIONS = 2
+    EDIT_RETRIEVE_PASSWORD = 3
 
 class DeletePassword(int, Enum):
     SELECT_PASSWORD = 1
+    CONFIRM_DELETION = 2

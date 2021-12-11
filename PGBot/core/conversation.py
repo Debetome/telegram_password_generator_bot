@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 
 from abc import ABCMeta, abstractmethod
+from typing import Union
 
 class BaseConversation(metaclass=ABCMeta):
     def __init__(self):
@@ -11,7 +12,7 @@ class BaseConversation(metaclass=ABCMeta):
         self._conversation = conversation
 
     @property
-    def conversation(self) -> ConversationHandler:
+    def conversation(self) -> Union[ConversationHandler, None]:
         if self._conversation is not None:
             return None
         return self._conversation

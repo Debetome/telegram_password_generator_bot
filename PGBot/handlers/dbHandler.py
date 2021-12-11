@@ -21,28 +21,22 @@ class DatabaseHandler:
         for table in TABLES.values():
             self._execute(table)
 
-    def get_user(self, chat_id: int) -> User:
-        self._execute(f"SELECT * FROM Users WHERE Chat_id=\"{chat_id}\"", fetchone=True)
-        user: User = User(
-            firstname=self._response[1],
-            lastname=self._response[2],
-            chat_id=self._response[3]
-        )
-
-        return user
+    def get_user(self, user_id: int) -> User:
+        self._execute(f"SELECT * FROM Users WHERE Id=\"{user_id}\"", fetchone=True)
+        return User(*self._response)
 
     def get_users(self) -> List[User]:
         self._execute("SELECT * FROM Users")
 
         users: List[User] = []
         for user in self._response:
-            users.append(User(
-                firstname=user[1],
-                lastname=user[2],
-                chat_id=int(user[3])
-            ))
+            users.append(User(*user))
 
         return users
+
+    def get_password(self, password_id: int) -> PasswordRegister:
+        self._execute(f"SELECT * FROM Passwords WHERE Id=\"{password_id}\"")
+        return PasswordRegister(*self._response)
 
     def get_passwords(self, chat_id: int) -> List[PasswordRegister]:
         self._execute(f"SELECT * FROM Passwords WHERE chat_id='{chat_id}'")
@@ -50,6 +44,7 @@ class DatabaseHandler:
         passwords: List[PasswordRegister] = []
         for password in self._response:
             passwords.append(PasswordRegister(
+                id=int(password[0]),
                 title=password[1],
                 password=password[2],
                 chat_id=int(password[3])

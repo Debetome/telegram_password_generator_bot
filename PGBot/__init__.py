@@ -18,6 +18,12 @@ from PGBot.core.strings import *
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.cryptoHandler import CryptoHandler
 
+from PGBot.conversations.generate import GenerateConversation
+from PGBot.conversations.edit import EditConversation
+from PGBot.conversations.save import SaveConversation
+from PGBot.conversations.mypasswords import MyPasswordsConversation
+from PGBot.conversations.delete import DeleteConversation
+
 from PGBot.models import Password
 
 
@@ -32,17 +38,16 @@ class PasswordGeneratorBot:
         self.dbHandler = None
         self.cryptoHandler = None
 
-        self.password = None
-        self.passwordRegister = None
-
-    def _generate_password(self) -> str:
-        return "".join(choices(self.password.chars, k=self.password.length))
+        self.conversations = []
 
     def start(self, update: Update, context: CallbackContext):
         update.message.reply_text("Start message!")
 
     def help(self, update: Update, context: CallbackContext):
         update.message.reply_text("Help message!")
+
+    def about(self, update: Update, context: CallbackContext):
+        update.message.reply_text("About command!")
 
     def generate(self, update: Update, context: CallbackContext):
         self.password = Password()
@@ -207,60 +212,36 @@ class PasswordGeneratorBot:
             query.edit_message_text("Operation cancelled")
             return MyPasswordState.SELECT_PASSWORD
 
+    def _setup_conversations(self):
+        self.conversations.extend([
+            GenerateConversation(self.dbHandler),
+            EditConversation(self.dbHandler),
+            SaveConversation(self.dbHandler),
+            MyPasswordsConversation(self.dbHandler),
+            DeleteConversation(self.dbHandler)
+        ])
+
+        for conv in self.conversations:
+            conv.setup()
+
+    def _set_conversations(self):
+        for conv in self.conversations:
+            self.dispatcher.add_handler(conv.conversation)
+
+    def _set_basic_commands(self):
+        self.dispatcher(CommandHandler("start", self.start))
+        self.dispatcher(CommandHandler("help", self.help))
+        self.dispatcher(CommandHandler("about", self.about))
+
     def run(self):
         self.updater = Updater(self.token)
         self.dispatcher = self.updater.dispatcher
         self.dbHandler = DatabaseHandler(self.database)
         self.cryptoHandler = CryptoHandler()
 
-        gen_passwd_conversation = ConversationHandler(
-            entry_points=[CommandHandler("generate", self.generate)],
-            states={
-                GenerateState.SELECT_CHARS: [CallbackQueryHandler(self.select_chars)],
-                GenerateState.SELECT_LENGTH: [MessageHandler(Filters.text, self.select_length)]
-            },
-            fallbacks=[
-                CommandHandler("generate", self.generate)
-            ]
-        )
-
-        save_passw_conversation = ConversationHandler(
-            entry_points=[CommandHandler("save", self.save)],
-            states={
-                SaveState.RETRIEVE_PASS: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_passw)],
-                SaveState.RETRIEVE_TITLE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)]
-            },
-            fallbacks=[
-                CommandHandler("save", self.save)
-            ]
-        )
-
-        my_passwords_conversation = ConversationHandler(
-            entry_points=[CommandHandler("mypasswords", self.my_passwords)],
-            states={
-                MyPasswordState.SELECT_PASSWORD: [CommandHandler("mypasswords", self.select_password)]
-            },
-            fallbacks=[
-                CommandHandler("mypasswords", self.my_passwords)
-            ]
-        )
-
-        delete_password_conversation = ConversationHandler(
-            entry_points=[CommandHandler("delete", self.delete)],
-            states={
-                DeletePassword.SELECT_PASSWORD: [CommandHandler("delete", self.delete)]
-            },
-            fallbacks=[
-                CommandHandler("delete", self.delete)
-            ]
-        )
-
-        self.dispatcher.add_handler(gen_passw_conversation)
-        self.dispatcher.add_handler(save_passw_conversation)
-        self.dispatcher.add_handler(my_passwords_conversation)
-        
-        self.dispatcher.add_handler(CommandHandler("start", self.start))
-        self.dispatcher.add_handler(CommandHandler("help", self.help))
+        self._setup_conversations()
+        self._set_conversations()
+        self._set_basic_commands()
 
         self.updater.start_polling()
         self.updater.idle()

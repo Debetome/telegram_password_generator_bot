@@ -20,23 +20,26 @@ from PGBot.handlers.cryptoHandler import CryptoHandler
 
 from PGBot.states import GenerateState
 from PGBot.models import Password
+from PGBot.models import PasswordRegister
 
 class GenerateConversation(BaseConversation):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dbHandler: DatabaseHandler, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._password = None
-        self._password_obj = None
+        self.dbHandler = dbHandler
+        self.password_obj = None
+        self.password = None
 
     def _generate_password(self):
-        if self._password_obj is not None:
+        if self.password_obj is not None:
             return None
 
-        chars = self._password_obj.chars
-        length = self._password_obj.length
+        chars = self.password_obj.chars
+        length = self.password_obj.length
         return "".join(choices(chars, k=length))
 
     def start(self, update: Update, context: CallbackContext):
-        self._password_obj = Password()
+        self.password_obj = Password()
+        self._register = PasswordRegister()
         keyboard = [
             [InlineKeyboardButton(LOWER_UPPER, callback_data=LOWER_UPPER)],
             [InlineKeyboardButton(LOWER_DIGITS, callback_data=LOWER_DIGITS)],
@@ -52,7 +55,7 @@ class GenerateConversation(BaseConversation):
     def select_chars(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
-        self._password_obj.chars = query.data
+        self.password_obj.chars = query.data
 
         query.edit_message_text("Type the password length ...")
         return GenerateState.SELECT_LENGTH
@@ -65,35 +68,55 @@ class GenerateConversation(BaseConversation):
             update.message.reply_text("Invalid password length!")
             return GenerateState.SELECT_LENGTH
 
-        self._password_obj.length = int("".join(length))
+        self.password_obj.length = int("".join(length))
 
         keyboard = [
-            [InlineKeyboardButton("Save", callback_data=1)],
-            [InlineKeyboardButton("Don't save", callback_data=0)]
+            [InlineKeyboardButton("Save", callback_data=str(1))],
+            [InlineKeyboardButton("NOT save", callback_data=str(0))]
         ]
 
         markup = InlineKeyboardMarkup(keyboard)
-        password = self._generate_password()
-        self._password_obj = None
+        self.password = self._generate_password()
+        self.password_obj = None
+
         update.message.reply_text(
             text=password,
             reply_markup=markup
         )
+
         return GenerateState.SAVE_PASSWORD
 
     def save_password(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
-        query.edit_message_text(text=self._password)
+        query.edit_message_text(text=self.password)
 
         choice = query.data
         bot = query.bot
 
-        if choice == 1:
+        if choice == '1':
             bot.send_message(
-                chat_id=query.message.chat_id,
-                text="Password saved!"
+                text="Set a title for this password ...",
+                chat_id=int(query.message.chat_id)
             )
+            return GenerateState.RETRIEVE_TITLE
+
+        return GenerateState.SELECT_CHARS
+
+    def retrieve_title(self, update: Update, context: CallbackContext):
+        title = update.message.text
+        
+        try:
+            self.dbHandler.insert_password(PasswordRegister(
+                title=title,
+                password=self.password,
+                chat_id=int(update.message.chat_id)
+            ))
+
+            update.message.reply_text("Password saved succesfuly!")
+
+        except Exception as ex:
+            update.message.reply_text("Unexpected error saving password, please try again!")
 
         return GenerateState.SELECT_CHARS
 
@@ -107,7 +130,8 @@ class GenerateConversation(BaseConversation):
             states={
                 GenerateState.SELECT_CHARS: [CallbackQueryHandler(self.select_chars)],
                 GenerateState.SELECT_LENGTH: [CallbackQueryHandler(self.select_length)],
-                GenerateState.SAVE_PASSWORD: [CallbackQueryHandler(self.save_password)]
+                GenerateState.SAVE_PASSWORD: [CallbackQueryHandler(self.save_password)],
+                GenerateState.RETRIEVE_TITLE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)]
             },
             fallbacks=[
                 CommandHandler("generate", self.start),

@@ -17,6 +17,24 @@ class DeleteConversation(BaseConversation):
         self.dbHandler = dbHandler
 
     def start(self, update: Update, context: CallbackContext):
+        passwords = self.dbHandler.get_passwords(int(update.message.chat_id))
+        passwords_keyboard = []
+
+        if len(passwords) == 0:
+            update.message.reply_text("There aren't passwords to delete yet!")
+            return DeletePassword.SELECT_PASSWORD
+
+        for i in range(0, len(passwords), 2):
+            stack = []
+            if abs(i-len(passwords)) != 1:
+                stack.extend([
+                    InlineKeyboardButton(passwords[i].title, callback_data=passwords[i].id),
+                    InlineKeyboardButton(passwords[i+1].title, callback_data=passwords[i+1].id)
+                ])
+
+            else:
+                stack.append(InlineKeyboardButton(passwords[i].title, callback_data=passwords[i].id))
+
         return DeletePassword.SELECT_PASSWORD
 
     def select_password(self, update: Update, context: CallbackContext):

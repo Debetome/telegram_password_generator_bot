@@ -22,13 +22,28 @@ class EditConversation(BaseConversation):
         super().__init__(*args, **kwargs)
         self.dbHandler = dbHandler
         self.register = None
-        self.newValue = None
+        self.choice = 0
 
     def start(self, update: Update, context: CallbackContext):
-        passwords = dbHandler.get_passwords(int(update.message.chat_id))
+        passwords = self.dbHandler.get_passwords(int(update.message.chat_id))
         passwords_keyboard = []
 
-        for i, item in enumerate(
+        if len(passwords) == 0:
+            update.message.reply_text("You haven't stored any password yet!")
+            return EditState.SELECT_PASSWORD
+
+        for i in range(0, len(passwords), 2):
+            stack = []
+            if abs(i-len(passwords)) != 1:
+                stack.extend([
+                    InlineKeyboardButton(passwords[i].title, callback_data=passwords[i].id),
+                    InlineKeyboardButton(passwords[i+1].title, callback_data=passwords[i+1].id)
+                ])
+            else:
+                stack.append(InlineKeyboardButton(passwords[i][0], callback_data=passwords[i][0].id))
+
+            passwords_keyboard.append(stack)
+
         return EditState.SELECT_PASSWORD
 
     def select_password(self, update: Update, context: CallbackContext):
@@ -45,20 +60,29 @@ class EditConversation(BaseConversation):
         update.message.reply_text("", reply_markup=markup)
         return EditState.SELECT_OPTION
 
-    def select_option(self, update: Update, context: CallbackContext):
+    def edit_password(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
+        query.edit_message_text("Send the new password ...")
+        self.choice = 1
         return EditState.RETRIEVE_VALUE
 
-    def retrieve_password(self, update: Update, context: CallbackContext):
-        return None
-
-    def retrieve_title(self, update: Update, context: CallbackContext):
-        return None
-
-    def retrieve_value(self, update: Update, context: CallbackContext):
+    def edit_title(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
+        query.edit_message_text("Send the new title you'll be refering to this password ...")
+        self.choice = 2
+        return EditState.RETRIEVE_VALUE
+
+    def retrieve_value(self, update: Update, context: CallbackContext):
+        value = update.message.text
+        actions = {
+            1: lambda: self.register.password = value,
+            2: lambda: self.register.title = value
+        }
+
+        actions[self.choice]()
+        self.dbHandler.update_password(self.register)
         return EditState.SELECT_PASSWORD
 
     def cancel(self, update: Update, context: CallbackContext):
@@ -71,7 +95,10 @@ class EditConversation(BaseConversation):
             states={
                 EditState.SELECT_PASSWORD: [CallbackQueryHandler(self.select_password)],
                 EditState.SELECT_OPTION: [
-                ]
+                    CallbackQueryHandler(pattern="^1$", self.edit_password),
+                    CallbackQueryHandler(pattern="^2$", self.edit_title)
+                ],
+                EditState.RETRIEVE_VALUE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_value)]
             },
             fallbacks=[
                 CommandHandler("edit", self.start),

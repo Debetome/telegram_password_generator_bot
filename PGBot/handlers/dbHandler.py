@@ -43,12 +43,7 @@ class DatabaseHandler:
 
         passwords: List[PasswordRegister] = []
         for password in self._response:
-            passwords.append(PasswordRegister(
-                id=int(password[0]),
-                title=password[1],
-                password=password[2],
-                chat_id=int(password[3])
-            ))
+            passwords.append(PasswordRegister(*password))
 
         return passwords
 
@@ -58,27 +53,47 @@ class DatabaseHandler:
         chat_id = user.chat_id
 
         self._execute(f"INSERT INTO Users(Firstname, Lastname, Chat_id) VALUES(\"{firstname}\", \"{lastname}\", \"{chat_id}\")")
-        self._response = f"New user {firstname} {lastname} inserted!"
+        self._response = f"Inserted new user '{firstname} {lastname}' from chat id '{chat_id}'"
 
     def insert_password(self, password: PasswordRegister) -> None:
         title = password.title
         passwd = password.password
-        chat_id = password.chat_id
+        user_id = password.user_id
 
-        self._execute(f"INSERT INTO Passwords(Title, Password, Chat_id) VALUES(\"{title}\", \"{passwd}\", \"{chat_id}\")")
-        self._response = f"New password inserted {password}"
+        self._execute(f"INSERT INTO Passwords(Title, Password, User_id) VALUES(\"{title}\", \"{passwd}\", \"{user_id}\")")
+        self._response = f"Inserted new password '{password}' titled '{title}' belongging to user of id '{user_id}'"
 
-    def delete_user(self, user: User) -> None:
+    def update_user(self, user: User) -> None:
+        id = user.id
         firstname = user.firstname
         lastname = user.lastname
         chat_id = user.chat_id
-        self._execute(f"DELETE INTO Users WHERE Chat_id=\"{chat_id}\"")
-        self._response = f"User {firstname} {lastname} deleted!"
+
+        self._execute(f"UPDATE Users SET Firstname=\"{firstname}\" Lastname=\"{lastname}\" Chat_id=\"{chat_id}\" WHERE Id=\"{id}\"")
+        self._response = f"Updated user of '{id}'"
+
+    def update_password(self, password: PasswordRegister) -> None:
+        id = password.id
+        title = password.title
+        password = password.password
+        user_id = password.user_id
+
+        self._execute(f"UPDATE Passwords SET Title=\"{title}\" Password=\"{password}\" User_id=\"{user_id}\" WHERE Id=\"{id}\"")
+        self._response = f"Updated password of id '{id}' belongging to user of id '{user_id}'"
+
+    def delete_user(self, user: User) -> None:
+        id = user.id
+        firstname = user.firstname
+        lastname = user.lastname
+        chat_id = user.chat_id
+        self._execute(f"DELETE INTO Users WHERE Id=\"{id}\"")
+        self._response = f"Deleted user '{firstname} {lastname}' of id '{id}'"
 
     def delete_password(self, password: PasswordRegister) -> None:
-        title = password.title
-        self._execute(f"DELETE INTO Passwords WHERE Title=\"{title}\"")
-        self._response = "Password titled '{title}' deleted!"
+        id = password.id
+        user_id = password.user_id
+        self._execute(f"DELETE INTO Passwords WHERE Id=\"{id}\"")
+        self._response = f"Deleted password titled '{title}' belongging to user of id '{user_id}'"
 
     @property
     def database(self) -> str:
@@ -96,7 +111,7 @@ class DatabaseHandler:
     def cursor(self) -> Any:
         return self._cursor
 
-    def _execute(self, command: str, fetchone=False) -> Union[List[str], str]:
+    def _execute(self, command: str, fetchone=False) -> None:
         self._connect()
 
         if not fetchone:

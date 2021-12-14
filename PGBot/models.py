@@ -12,7 +12,7 @@ class PasswordRegister:
     id: int = field(default_factory=int)
     title: str = field(default_factory=str)
     password: str = field(default_factory=str)
-    chat_id: int = field(default_factory=int)
+    user_id: int = field(default_factory=int)
 
 @dataclass
 class Password:

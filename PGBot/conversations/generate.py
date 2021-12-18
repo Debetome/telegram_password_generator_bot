@@ -13,12 +13,11 @@ from random import choices
 
 from PGBot.core.logger import logger
 from PGBot.core.conversation import BaseConversation
-from PGBot.core.strings import *
-
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.cryptoHandler import CryptoHandler
 
-from PGBot.states import GenerateState
+from PGBot.constants import GenerateState
+from PGBot.constants import Characters
 from PGBot.models import Password
 from PGBot.models import PasswordRegister
 
@@ -41,11 +40,11 @@ class GenerateConversation(BaseConversation):
         self.password_obj = Password()
         self._register = PasswordRegister()
         keyboard = [
-            [InlineKeyboardButton(LOWER_UPPER, callback_data=LOWER_UPPER)],
-            [InlineKeyboardButton(LOWER_DIGITS, callback_data=LOWER_DIGITS)],
-            [InlineKeyboardButton(LOWER_UPPER_DIGITS, callback_data=LOWER_UPPER_DIGITS)],
-            [InlineKeyboardButton(ALL, callback_data=ALL)],
-            [InlineKeyboardButton(ONLY_DIGITS, callback_data=ONLY_DIGITS)]
+            [InlineKeyboardButton(LOWER_UPPER, callback_data=Charactersr.LOWER_UPPER)],
+            [InlineKeyboardButton(LOWER_DIGITS, callback_data=Characters.LOWER_DIGITS)],
+            [InlineKeyboardButton(LOWER_UPPER_DIGITS, callback_data=Characters.LOWER_UPPER_DIGITS)],
+            [InlineKeyboardButton(ALL, callback_data=Characters.ALL)],
+            [InlineKeyboardButton(ONLY_DIGITS, callback_data=Characters.ONLY_DIGITS)]
         ]
 
         markup = InlineKeyboardMarkup(keyboard)
@@ -121,7 +120,7 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SELECT_CHARS
 
     def cancel(self, update: Update, context: CallbackContext):
-        update.message.edit_text("Operation cancelled!")
+        update.message.reply_text("Generate password operation cancelled!")
         return GenerateState.SELECT_CHARS
 
     def setup(self):

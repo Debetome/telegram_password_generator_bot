@@ -9,7 +9,7 @@ from telegram.ext import (
 from PGBot.core.conversation import BaseConversation
 from PGBot.core.logger import logger
 from PGBot.handlers.dbHandler import DatabaseHandler
-from PGBot.states import DeletePassword
+from PGBot.constants import DeletePassword
 
 class DeleteConversation(BaseConversation):
     def __init__(self, dbHandler: DatabaseHandler, *args, **kwargs):

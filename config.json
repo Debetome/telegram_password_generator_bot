@@ -1,5 +1,5 @@
 {
-  "token": "5046773280:AAHRO2Vj-9Zhy6nxA2f-2vDPxDsIAoQRsaM",
+  "bot_token": "5046773280:AAHRO2Vj-9Zhy6nxA2f-2vDPxDsIAoQRsaM",
   "database": "database.db",
   "logfile": "pgbot.log"
 }

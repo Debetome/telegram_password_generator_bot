@@ -1,5 +1,4 @@
 import json
-import re
 
 from PGBot.core.exporter import BaseExporter
 from PGBot.models import PasswordRegister

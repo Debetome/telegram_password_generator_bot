@@ -1,6 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Updater,
     CallbackContext,
     CommandHandler,
     MessageHandler,
@@ -15,7 +14,7 @@ from PGBot.core.logger import logger
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.cryptoHandler import CryptoHandler
 
-from PGBot.states import EditState
+from PGBot.constants import EditState
 
 class EditConversation(BaseConversation):
     def __init__(self, dbHandler: DatabaseHandler, *args, **kwargs):

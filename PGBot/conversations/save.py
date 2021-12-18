@@ -15,7 +15,7 @@ from PGBot.core.logger import logger
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.cryptoHandler import CryptoHandler
 
-from PGBot.states import SaveState
+from PGBot.constants import SaveState
 from PGBot.models import PasswordRegister
 
 class SaveConversation(BaseConversation):

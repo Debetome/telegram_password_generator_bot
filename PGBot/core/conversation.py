@@ -13,7 +13,7 @@ class BaseConversation(metaclass=ABCMeta):
 
     @property
     def conversation(self) -> Union[ConversationHandler, None]:
-        if self._conversation is not None:
+        if self._conversation is None:
             return None
         return self._conversation
 

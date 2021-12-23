@@ -1,10 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Updater,
     CallbackContext,
     CommandHandler,
-    ConversationHandler,
     MessageHandler,
+    ConversationHandler,
     CallbackQueryHandler,
     Filters
 )
@@ -14,10 +13,11 @@ from random import choices
 from PGBot.core.logger import logger
 from PGBot.core.conversation import BaseConversation
 from PGBot.handlers.dbHandler import DatabaseHandler
-from PGBot.handlers.cryptoHandler import CryptoHandler
+from PGBot.handlers.encryptHandler import EncryptHandler
 
 from PGBot.constants import GenerateState
 from PGBot.constants import Characters
+from PGBot.models import User
 from PGBot.models import Password
 from PGBot.models import PasswordRegister
 
@@ -29,7 +29,7 @@ class GenerateConversation(BaseConversation):
         self.password = None
 
     def _generate_password(self):
-        if self.password_obj is not None:
+        if self.password_obj is None:
             return None
 
         chars = self.password_obj.chars
@@ -38,89 +38,114 @@ class GenerateConversation(BaseConversation):
 
     def start(self, update: Update, context: CallbackContext):
         self.password_obj = Password()
-        self._register = PasswordRegister()
+        self.register = PasswordRegister()
         keyboard = [
-            [InlineKeyboardButton(LOWER_UPPER, callback_data=Charactersr.LOWER_UPPER)],
-            [InlineKeyboardButton(LOWER_DIGITS, callback_data=Characters.LOWER_DIGITS)],
-            [InlineKeyboardButton(LOWER_UPPER_DIGITS, callback_data=Characters.LOWER_UPPER_DIGITS)],
-            [InlineKeyboardButton(ALL, callback_data=Characters.ALL)],
-            [InlineKeyboardButton(ONLY_DIGITS, callback_data=Characters.ONLY_DIGITS)]
+            [InlineKeyboardButton(Characters.LOWER_UPPER, callback_data=Characters.LOWER_UPPER)],
+            [InlineKeyboardButton(Characters.LOWER_DIGITS, callback_data=Characters.LOWER_DIGITS)],
+            [InlineKeyboardButton(Characters.LOWER_UPPER_DIGITS, callback_data=Characters.LOWER_UPPER_DIGITS)],
+            [InlineKeyboardButton(Characters.ALL, callback_data=Characters.ALL)],
+            [InlineKeyboardButton(Characters.ONLY_DIGITS, callback_data=Characters.ONLY_DIGITS)]
         ]
 
         markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text("", reply_markup=markup)
+        update.message.reply_text("What characters do you wish your password to have?", reply_markup=markup)
         return GenerateState.SELECT_CHARS
 
     def select_chars(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
         self.password_obj.chars = query.data
+        self.password_obj.message_id = query.message.message_id
 
-        query.edit_message_text("Type the password length ...")
+        query.edit_message_text("📏 Set a password length ...")
         return GenerateState.SELECT_LENGTH
 
     def select_length(self, update: Update, context: CallbackContext):
+        bot = context.bot
         message = update.message.text
-        length = [a for a in [b for b in message if b in digits]]
+        length = "".join([b for b in message if b in Characters.ONLY_DIGITS])
 
         if len(length) == 0:
             update.message.reply_text("Invalid password length!")
             return GenerateState.SELECT_LENGTH
 
-        self.password_obj.length = int("".join(length))
+        self.password_obj.length = int(length)
 
         keyboard = [
-            [InlineKeyboardButton("Save", callback_data=str(1))],
-            [InlineKeyboardButton("NOT save", callback_data=str(0))]
+            [
+                InlineKeyboardButton("💾 Save", callback_data=str(1)),
+                InlineKeyboardButton("🚫 NOT save", callback_data=str(2))
+            ],
+            [InlineKeyboardButton("✉ Send to email", callback_data=str(3))]
         ]
 
         markup = InlineKeyboardMarkup(keyboard)
         self.password = self._generate_password()
-        self.password_obj = None
 
-        update.message.reply_text(
-            text=password,
+        bot.send_message(
+            chat_id=update.message.chat_id,
+            text=f"{self.password}",
             reply_markup=markup
         )
 
+        self.password_obj = Password()
         return GenerateState.SAVE_PASSWORD
 
     def save_password(self, update: Update, context: CallbackContext):
         query = update.callback_query
         query.answer()
-        query.edit_message_text(text=self.password)
+        query.edit_message_text(text=f"{self.password}")
 
-        choice = query.data
         bot = query.bot
+        bot.send_message(
+            text="🔤 Set a name for this password ...",
+            chat_id=int(query.message.chat_id)
+        )
 
-        if choice == '1':
-            bot.send_message(
-                text="Set a title for this password ...",
-                chat_id=int(query.message.chat_id)
-            )
-            return GenerateState.RETRIEVE_TITLE
+        return GenerateState.RETRIEVE_TITLE
 
+    def not_save_password(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        query.answer()
+        query.edit_message_text(text=f"{self.password}")
         return GenerateState.SELECT_CHARS
 
     def retrieve_title(self, update: Update, context: CallbackContext):
         title = update.message.text
-        
-        try:
-            self.dbHandler.insert_password(PasswordRegister(
-                title=title,
-                password=self.password,
-                chat_id=int(update.message.chat_id)
+        chat_id = int(update.message.chat_id)
+
+        def user_generator() -> User:
+            for user in self.dbHandler.get_users():
+                yield user
+
+        user = [u for u in user_generator() if u.chat_id == chat_id]
+
+        if len(user) == 0:
+            firstname = update.message.from_user.first_name
+            lastname = update.message.from_user.last_name
+
+            self.dbHandler.insert_user(User(
+                firstname=firstname,
+                lastname=lastname,
+                chat_id=chat_id
             ))
 
-            update.message.reply_text("Password saved succesfuly!")
+            user = [u for u in user_generator() if u.chat_id == chat_id][0]
 
-        except Exception as ex:
-            update.message.reply_text("Unexpected error saving password, please try again!")
+        else:
+            user = user[0]
 
+        self.dbHandler.insert_password(PasswordRegister(
+            title=title,
+            password=self.password,
+            user_id=user.id
+        ))
+
+        update.message.reply_text("✅ Password saved succesfuly!")
         return GenerateState.SELECT_CHARS
 
     def cancel(self, update: Update, context: CallbackContext):
-        update.message.reply_text("Generate password operation cancelled!")
+        update.message.reply_text("🚫 Generate password operation cancelled!")
         return GenerateState.SELECT_CHARS
 
     def setup(self):
@@ -128,8 +153,13 @@ class GenerateConversation(BaseConversation):
             entry_points=[CommandHandler("generate", self.start)],
             states={
                 GenerateState.SELECT_CHARS: [CallbackQueryHandler(self.select_chars)],
-                GenerateState.SELECT_LENGTH: [CallbackQueryHandler(self.select_length)],
-                GenerateState.SAVE_PASSWORD: [CallbackQueryHandler(self.save_password)],
+                GenerateState.SELECT_LENGTH: [
+                    MessageHandler(filters=Filters.text & ~Filters.command, callback=self.select_length)
+                ],
+                GenerateState.SAVE_PASSWORD: [
+                    CallbackQueryHandler(pattern="^1$", callback=self.save_password),
+                    CallbackQueryHandler(pattern="^2$", callback=self.not_save_password)
+                ],
                 GenerateState.RETRIEVE_TITLE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)]
             },
             fallbacks=[

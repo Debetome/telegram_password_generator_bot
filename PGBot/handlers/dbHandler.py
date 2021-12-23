@@ -14,9 +14,9 @@ class DatabaseHandler:
         self._conn = None
         self._cursor = None
 
-    def create_database(self):
+    def create_database(self) -> None:
         if os.path.exists(self._database):
-            return
+            return None
 
         for table in TABLES.values():
             self._execute(table)

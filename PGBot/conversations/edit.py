@@ -10,9 +10,8 @@ from telegram.ext import (
 
 from PGBot.core.conversation import BaseConversation
 from PGBot.core.logger import logger
-
 from PGBot.handlers.dbHandler import DatabaseHandler
-from PGBot.handlers.cryptoHandler import CryptoHandler
+from PGBot.handlers.encryptHandler import EncryptHandler
 
 from PGBot.constants import EditState
 
@@ -75,12 +74,12 @@ class EditConversation(BaseConversation):
 
     def retrieve_value(self, update: Update, context: CallbackContext):
         value = update.message.text
-        actions = {
-            1: lambda: self.register.password = value,
-            2: lambda: self.register.title = value
-        }
 
-        actions[self.choice]()
+        if self.choice == 1:
+            self.register.password = value
+        elif self.choice == 2:
+            self.register.title = value
+
         self.dbHandler.update_password(self.register)
         return EditState.SELECT_PASSWORD
 
@@ -93,10 +92,6 @@ class EditConversation(BaseConversation):
             entry_points=[CommandHandler("edit", self.start)],
             states={
                 EditState.SELECT_PASSWORD: [CallbackQueryHandler(self.select_password)],
-                EditState.SELECT_OPTION: [
-                    CallbackQueryHandler(pattern="^1$", self.edit_password),
-                    CallbackQueryHandler(pattern="^2$", self.edit_title)
-                ],
                 EditState.RETRIEVE_VALUE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_value)]
             },
             fallbacks=[

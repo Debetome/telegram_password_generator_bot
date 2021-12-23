@@ -35,6 +35,8 @@ class DeleteConversation(BaseConversation):
             else:
                 stack.append(InlineKeyboardButton(passwords[i].title, callback_data=passwords[i].id))
 
+            passwords_keyboard.append(stack)
+
         return DeletePassword.SELECT_PASSWORD
 
     def select_password(self, update: Update, context: CallbackContext):

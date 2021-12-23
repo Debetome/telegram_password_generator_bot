@@ -18,3 +18,4 @@ class PasswordRegister:
 class Password:
     chars: str = field(default_factory=str)
     length: int = field(default_factory=int)
+    message_id: int = field(default_factory=int)

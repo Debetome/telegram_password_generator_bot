@@ -1,10 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Updater,
     CallbackContext,
     CommandHandler,
-    ConversationHandler,
     MessageHandler,
+    ConversationHandler,
     CallbackQueryHandler,
     Filters
 )
@@ -13,7 +12,7 @@ from PGBot.core.conversation import BaseConversation
 from PGBot.core.logger import logger
 
 from PGBot.handlers.dbHandler import DatabaseHandler
-from PGBot.handlers.cryptoHandler import CryptoHandler
+from PGBot.handlers.encryptHandler import EncryptHandler
 
 from PGBot.constants import SaveState
 from PGBot.models import PasswordRegister

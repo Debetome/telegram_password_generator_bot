@@ -17,7 +17,7 @@ class GenerateState(int, Enum):
     SELECT_CHARS = 1
     SELECT_LENGTH = 2
     SAVE_PASSWORD = 3
-    RETRIEVE_TITLE = 4
+    SEND_EMAIL = 4
 
 class SaveState(int, Enum):
     RETRIEVE_PASS = 1

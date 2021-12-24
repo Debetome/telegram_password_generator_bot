@@ -27,6 +27,7 @@ class GenerateConversation(BaseConversation):
         self.dbHandler = dbHandler
         self.password_obj = None
         self.password = None
+        self.chars_query = None
 
     def _generate_password(self):
         if self.password_obj is None:
@@ -39,6 +40,7 @@ class GenerateConversation(BaseConversation):
     def start(self, update: Update, context: CallbackContext):
         self.password_obj = Password()
         self.register = PasswordRegister()
+
         keyboard = [
             [InlineKeyboardButton(Characters.LOWER_UPPER, callback_data=Characters.LOWER_UPPER)],
             [InlineKeyboardButton(Characters.LOWER_DIGITS, callback_data=Characters.LOWER_DIGITS)],
@@ -53,7 +55,31 @@ class GenerateConversation(BaseConversation):
 
     def select_chars(self, update: Update, context: CallbackContext):
         query = update.callback_query
+        self.chars_query = query
+        bot = query.bot
         query.answer()
+
+        if query.data == '1': 
+            query.edit_message_text(text=f"{self.password}")
+            bot.send_message(
+                text="🔤 Set a name for this password ...",
+                chat_id=int(query.message.chat_id)
+            )
+            return GenerateState.SAVE_PASSWORD
+
+        elif query.data == '2':
+            query.edit_message_text(
+                text=f"{self.password}",
+            )
+            return GenerateState.SELECT_CHARS
+
+        elif query.data == '3':
+            bot.send_message(
+                text="📨 Type the email to send this password to ...",
+                chat_id=int(query.message.chat_id)
+            )
+            return GenerateState.SEND_EMAIL
+
         self.password_obj.chars = query.data
         self.password_obj.message_id = query.message.message_id
 
@@ -67,6 +93,10 @@ class GenerateConversation(BaseConversation):
 
         if len(length) == 0:
             update.message.reply_text("Invalid password length!")
+            return GenerateState.SELECT_LENGTH
+
+        if int(length) < 8:
+            update.message.reply_text("Password length too short!")
             return GenerateState.SELECT_LENGTH
 
         self.password_obj.length = int(length)
@@ -102,7 +132,7 @@ class GenerateConversation(BaseConversation):
             chat_id=int(query.message.chat_id)
         )
 
-        return GenerateState.RETRIEVE_TITLE
+        return GenerateState.SAVE_PASSWORD
 
     def not_save_password(self, update: Update, context: CallbackContext):
         query = update.callback_query
@@ -144,6 +174,13 @@ class GenerateConversation(BaseConversation):
         update.message.reply_text("✅ Password saved succesfuly!")
         return GenerateState.SELECT_CHARS
 
+    def send_email(self, update: Update, context: CallbackContext):
+        bot.send_message(
+            text="📨 Type the email to send this password to ...",
+            chat_id=int(query.message.chat_id)
+        )
+        return GenerateState.SELECT_CHARS
+
     def cancel(self, update: Update, context: CallbackContext):
         update.message.reply_text("🚫 Generate password operation cancelled!")
         return GenerateState.SELECT_CHARS
@@ -158,9 +195,13 @@ class GenerateConversation(BaseConversation):
                 ],
                 GenerateState.SAVE_PASSWORD: [
                     CallbackQueryHandler(pattern="^1$", callback=self.save_password),
-                    CallbackQueryHandler(pattern="^2$", callback=self.not_save_password)
+                    CallbackQueryHandler(pattern="^2$", callback=self.not_save_password),
+                    CallbackQueryHandler(pattern="^3$", callback=self.send_email),
+                    MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)
                 ],
-                GenerateState.RETRIEVE_TITLE: [MessageHandler(Filters.text & ~Filters.command, self.retrieve_title)]
+                GenerateState.SEND_EMAIL: [
+                    MessageHandler(Filters.text & ~Filters.command, self.send_email)
+                ]
             },
             fallbacks=[
                 CommandHandler("generate", self.start),

@@ -11,7 +11,7 @@ from telegram.ext import (
 from random import choices
 
 from PGBot.core.logger import logger
-from PGBot.core.conversation import BaseConversation
+from PGBot.core.conversation import *
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.encryptHandler import EncryptHandler
 
@@ -27,7 +27,6 @@ class GenerateConversation(BaseConversation):
         self.dbHandler = dbHandler
         self.password_obj = None
         self.password = None
-        self.chars_query = None
 
     def _generate_password(self):
         if self.password_obj is None:
@@ -38,12 +37,16 @@ class GenerateConversation(BaseConversation):
         return "".join(choices(chars, k=length))
 
     def start(self, update: Update, context: CallbackContext):
+        self.set_state_on()
+        self.bot.set_last_conversation(self)
+
         self.password_obj = Password()
         self.register = PasswordRegister()
 
         keyboard = [
             [InlineKeyboardButton(Characters.LOWER_UPPER, callback_data=Characters.LOWER_UPPER)],
             [InlineKeyboardButton(Characters.LOWER_DIGITS, callback_data=Characters.LOWER_DIGITS)],
+            [InlineKeyboardButton(Characters.UPPER_DIGITS, callback_data=Characters.UPPER_DIGITS)],
             [InlineKeyboardButton(Characters.LOWER_UPPER_DIGITS, callback_data=Characters.LOWER_UPPER_DIGITS)],
             [InlineKeyboardButton(Characters.ALL, callback_data=Characters.ALL)],
             [InlineKeyboardButton(Characters.ONLY_DIGITS, callback_data=Characters.ONLY_DIGITS)]
@@ -54,6 +57,7 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SELECT_CHARS
 
     def select_chars(self, update: Update, context: CallbackContext):
+        self.set_state_on()
         query = update.callback_query
         self.chars_query = query
         bot = query.bot
@@ -87,6 +91,7 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SELECT_LENGTH
 
     def select_length(self, update: Update, context: CallbackContext):
+        self.set_state_on()
         bot = context.bot
         message = update.message.text
         length = "".join([b for b in message if b in Characters.ONLY_DIGITS])
@@ -97,6 +102,13 @@ class GenerateConversation(BaseConversation):
 
         if int(length) < 8:
             update.message.reply_text("Password length too short!")
+            return GenerateState.SELECT_LENGTH
+        elif int(length) > 256 and int(length) < 500:
+            update.message.reply_text("Password length too long!")
+            return GenerateState.SELECT_LENGTH
+        
+        if int(length) > 500:
+            update.message.reply_text("Password EXCESSIVELY long!")
             return GenerateState.SELECT_LENGTH
 
         self.password_obj.length = int(length)
@@ -122,8 +134,10 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SAVE_PASSWORD
 
     def save_password(self, update: Update, context: CallbackContext):
+        self.set_state_on()
         query = update.callback_query
         query.answer()
+
         query.edit_message_text(text=f"{self.password}")
 
         bot = query.bot
@@ -135,12 +149,14 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SAVE_PASSWORD
 
     def not_save_password(self, update: Update, context: CallbackContext):
+        self.set_state_on()
         query = update.callback_query
         query.answer()
         query.edit_message_text(text=f"{self.password}")
         return GenerateState.SELECT_CHARS
 
     def retrieve_title(self, update: Update, context: CallbackContext):
+        self.set_state_on()
         title = update.message.text
         chat_id = int(update.message.chat_id)
 
@@ -175,12 +191,15 @@ class GenerateConversation(BaseConversation):
         return GenerateState.SELECT_CHARS
 
     def send_email(self, update: Update, context: CallbackContext):
+        self.set_state_on()
+        bot = update.bot
         bot.send_message(
             text="📨 Type the email to send this password to ...",
             chat_id=int(query.message.chat_id)
         )
         return GenerateState.SELECT_CHARS
 
+    @cancel_command
     def cancel(self, update: Update, context: CallbackContext):
         update.message.reply_text("🚫 Generate password operation cancelled!")
         return GenerateState.SELECT_CHARS

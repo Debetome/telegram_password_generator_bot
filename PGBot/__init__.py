@@ -37,6 +37,7 @@ class PasswordGeneratorBot:
         self.encryptHandler = None
 
         self.conversations = []
+        self.last_conversation = None
 
     def start(self, update: Update, context: CallbackContext):
         user = update.message.from_user
@@ -74,6 +75,9 @@ class PasswordGeneratorBot:
         self.dispatcher.add_handler(CommandHandler("start", self.start))
         self.dispatcher.add_handler(CommandHandler("help", self.help))
         self.dispatcher.add_handler(CommandHandler("about", self.about))
+
+    def set_last_conversation(self, conv: BaseConversation):
+        self.last_conversation = conv
 
     def run(self):
         self.updater = Updater(self.token)

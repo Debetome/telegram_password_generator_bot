@@ -83,8 +83,12 @@ class EditConversation(BaseConversation):
         self.dbHandler.update_password(self.register)
         return EditState.SELECT_PASSWORD
 
-    def cancel(self, update: Update, context: CallbackContext):
-        update.message.reply_text("Edit password operation cancelled!")
+    @property
+    def operation(self):
+        return "Edit password"
+
+    @property
+    def cancel_state(self) -> EditState:
         return EditState.SELECT_PASSWORD
 
     def setup(self):
@@ -96,7 +100,7 @@ class EditConversation(BaseConversation):
             },
             fallbacks=[
                 CommandHandler("edit", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
 

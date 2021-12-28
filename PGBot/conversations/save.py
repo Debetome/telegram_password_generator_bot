@@ -51,8 +51,12 @@ class SaveConversation(BaseConversation):
         update.message.reply_text("Password saved!")
         return SaveState.RETRIEVE_PASS
 
-    def cancel(self, update: Update, context: CallbackContext):
-        update.message.edit_text("Operation cancelled!")
+    @property
+    def operation(self) -> str:
+        return "Save password"
+
+    @property
+    def cancel_state(self) -> SaveState:
         return SaveState.RETRIEVE_PASS
 
     def setup(self):
@@ -64,7 +68,7 @@ class SaveConversation(BaseConversation):
             },
             fallbacks=[
                 CommandHandler("save", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
 

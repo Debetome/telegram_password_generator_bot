@@ -1,43 +1,29 @@
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from typing import Union, Callable
+
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler
 
-from abc import ABCMeta, abstractmethod
-from typing import Union, Callable
-from functools import wraps
-
-def cancel_command(func: Callable):
-    @wraps(func)
-    def wrapper(*args):
-        conv = args[0]
-        update = args[1]
-
-        if conv.state != 1:
-            update.message.reply_text("No operation running!")
-            return None
-
-        conv.set_state_off()
-        func(*args)
-
-    return wrapper
 
 class BaseConversation(metaclass=ABCMeta):
     def __init__(self, bot: object):
-        self._bot = bot
+        self.bot = bot
         self._conversation = None
         self._state = 0
 
-    def set_conversation(self, conversation: ConversationHandler):
-        self._conversation = conversation
-
     def set_state_on(self):
+        self.bot.set_last_conversation(self)
         self._state = 1
 
     def set_state_off(self):
+        self.bot.set_last_conversation(self)
         self._state = 0
 
-    @property
-    def operation(self) -> str:
-        return self._operation
+    def set_conversation(self, conversation: ConversationHandler):
+        if not isinstance(conversation, ConversationHandler):
+            return None
+        self._conversation = conversation
 
     @property
     def state(self) -> int:
@@ -54,7 +40,11 @@ class BaseConversation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def cancel(self, update: Update, context: CallbackContext):
+    def operation(self) -> str:
+        pass
+
+    @abstractmethod
+    def cancel_state(self) -> object:
         pass
 
     @abstractmethod

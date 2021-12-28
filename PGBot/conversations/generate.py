@@ -27,6 +27,7 @@ class GenerateConversation(BaseConversation):
         self.dbHandler = dbHandler
         self.password_obj = None
         self.password = None
+        self.email = None
 
     def _generate_password(self):
         if self.password_obj is None:
@@ -38,7 +39,6 @@ class GenerateConversation(BaseConversation):
 
     def start(self, update: Update, context: CallbackContext):
         self.set_state_on()
-        self.bot.set_last_conversation(self)
 
         self.password_obj = Password()
         self.register = PasswordRegister()
@@ -193,15 +193,21 @@ class GenerateConversation(BaseConversation):
     def send_email(self, update: Update, context: CallbackContext):
         self.set_state_on()
         bot = update.bot
-        bot.send_message(
+        update.message.reply_text(
             text="📨 Type the email to send this password to ...",
-            chat_id=int(query.message.chat_id)
         )
         return GenerateState.SELECT_CHARS
 
-    @cancel_command
-    def cancel(self, update: Update, context: CallbackContext):
-        update.message.reply_text("🚫 Generate password operation cancelled!")
+    def retrieve_email(self, update: Update, context: CallbackContext):
+        self.email = update.message.text
+        return None
+
+    @property
+    def operation(self) -> str:
+        return "Generate password"
+
+    @property
+    def cancel_state(self) -> GenerateState:
         return GenerateState.SELECT_CHARS
 
     def setup(self):
@@ -224,7 +230,7 @@ class GenerateConversation(BaseConversation):
             },
             fallbacks=[
                 CommandHandler("generate", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
         self.set_conversation(conversation)

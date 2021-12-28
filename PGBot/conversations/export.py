@@ -25,7 +25,12 @@ class ExportConversation(BaseConversation):
     def start(self, update: Update, context: CallbackContext):
         return None
 
-    def cancel(self, update: Update, context: CallbackContext):
+    @property
+    def operation(self) -> str:
+        return "Export passwords"
+
+    @property
+    def cancel_state(self) -> ExportState:
         return None
 
     def setup(self):
@@ -34,7 +39,7 @@ class ExportConversation(BaseConversation):
             states={},
             fallbacks=[
                 CommandHandler("start", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
 

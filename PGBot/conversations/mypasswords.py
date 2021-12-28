@@ -139,8 +139,12 @@ class MyPasswordsConversation(BaseConversation):
         self.dbHandler.delete_password(self.register)
         return MyPasswordState.SELECT_PASSWORD
 
-    def cancel(self, update: Update, context: CallbackContext):
-        update.message.edit_text("Operation cancelled!")
+    @property
+    def operation(self) -> str:
+        return "My passwords"
+
+    @property
+    def cancel_state(self) -> MyPasswordState:
         return MyPasswordState.SELECT_PASSWORD
 
     def setup(self):
@@ -168,7 +172,7 @@ class MyPasswordsConversation(BaseConversation):
             },
             fallbacks=[
                 CommandHandler("mypasswords", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
 

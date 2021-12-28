@@ -10,6 +10,7 @@ from telegram.ext import (
 )
 
 from PGBot.core.logger import logger
+from PGBot.core.conversation import *
 from PGBot.handlers.dbHandler import DatabaseHandler
 from PGBot.handlers.encryptHandler import EncryptHandler
 
@@ -54,13 +55,27 @@ class PasswordGeneratorBot:
         update.message.reply_text("About command!")
         logger.info(f"{' '.join(user)} used command 'about'")
 
+    def cancel(self, update: Update, context: CallbackContext):
+        if not self.last_conversation:
+            update.message.reply_text(text="No operation running!")
+            return None
+        if self.last_conversation.state != 1:
+            update.message.reply_text(text="No operation running!")
+            return None
+
+        self.last_conversation.set_state_off()
+        update.message.reply_text(
+            text=f"🚫 {self.last_conversation.operation} operation cancelled!"
+        )
+        return self.last_conversation.cancel_state
+
     def _define_conversations(self):
         self.conversations.extend([
-            GenerateConversation(self.dbHandler),
-            EditConversation(self.dbHandler),
-            SaveConversation(self.dbHandler),
-            MyPasswordsConversation(self.dbHandler),
-            DeleteConversation(self.dbHandler)
+            GenerateConversation(self.dbHandler, self),
+            EditConversation(self.dbHandler, self),
+            SaveConversation(self.dbHandler, self),
+            MyPasswordsConversation(self.dbHandler, self),
+            DeleteConversation(self.dbHandler, self)
         ])
 
     def _setup_conversations(self):
@@ -77,6 +92,8 @@ class PasswordGeneratorBot:
         self.dispatcher.add_handler(CommandHandler("about", self.about))
 
     def set_last_conversation(self, conv: BaseConversation):
+        if not isinstance(conv, BaseConversation):
+            return None
         self.last_conversation = conv
 
     def run(self):

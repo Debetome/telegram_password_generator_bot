@@ -68,8 +68,12 @@ class DeleteConversation(BaseConversation):
 
         return DeletePassword.SELECT_PASSWORD
 
-    def cancel(self, update: Update, context: CallbackContext):
-        update.message.edit_text("Operation cancelled!")
+    @property
+    def operation(self) -> str:
+        return "Delete password"
+
+    @property
+    def cancel_state(self) -> DeletePassword:
         return DeletePassword.SELECT_PASSWORD
 
     def setup(self):
@@ -80,7 +84,7 @@ class DeleteConversation(BaseConversation):
             },
             fallbacks=[
                 CommandHandler("delete", self.start),
-                CommandHandler("cancel", self.cancel)
+                CommandHandler("cancel", self.bot.cancel)
             ]
         )
 
